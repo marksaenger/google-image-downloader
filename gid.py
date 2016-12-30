@@ -1,6 +1,5 @@
-""" Simple program to request images using the Customsearch Google API """
+""" Simple program to request images using Google's Customsearch API """
 
-import configparser
 import datetime
 import math
 import os.path
@@ -10,19 +9,18 @@ from urllib.request import urlretrieve
 
 from googleapiclient.discovery import build
 
-MAX_REQUESTS = 100
+MAX_REQUESTS = 100 # max requests per day imposed by Google for those with free accounts
 MAX_RESULTS_PER_REQUEST = 10
 
-SEARCH_TERM = "universal studios"
-NUM_SEARCH_RESULTS = 10
+def gid(api_key, cx_id, num_search_results, search_term, img_size, img_type, safe_search, search_type):
+    """
+    Google Image Downloader
+    Download images based on function parameters to local folder
+    """
 
-def main():
-    """ Main file """
+    # TODO use an object to reduce the number of local scope variables
 
-    api_key = get_config_value('DEFAULT', 'APIKey')
-    cx_id = get_config_value('DEFAULT', 'CX')
-
-    remaining_requests = NUM_SEARCH_RESULTS
+    remaining_requests = num_search_results
 
     # Build a service object for interacting with the API. Visit
     # the Google APIs Console <http://code.google.com/apis/console>
@@ -38,7 +36,7 @@ def main():
 
     # Create a unique directory containing the current time and search term for each query
     time = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
-    directory = time + '_' + SEARCH_TERM
+    directory = time + '_' + search_term
     if not os.path.exists(directory):
         os.makedirs(directory)
 
@@ -51,13 +49,13 @@ def main():
         # see https://developers.google.com/custom-search/json-api/v1/reference/cse/list
         # for detailed documentation
         res = service.cse().list(
-            q=SEARCH_TERM,
+            q=search_term,
             cx=cx_id,
-            imgSize='huge', #icon, small, medium, large, xlarge, xxlarge, huge,
-            imgType='photo', #clipart, face, lineart, news, photo
+            imgSize=img_size,
+            imgType=img_type,
             num=cur_results, #number of search results, max of 10
-            safe='medium', #off, medium, high for safe search filtering
-            searchType='image',
+            safe=safe_search,
+            searchType=search_type,
             start=start_num
             ).execute()
 
@@ -70,7 +68,8 @@ def main():
                     #  urls with stuff after the extension
                     #  urls without an extension
                     #  ...
-                    urlretrieve(item['link'], directory + "//" + str(size) + '___' + os.path.basename(item['link']))
+                    urlretrieve(item['link'], directory + "//" + str(size) + '___' + \
+                        os.path.basename(item['link']))
                 except urllib.error.HTTPError:
                     print("Error downloading image\n")
         else:
@@ -81,16 +80,3 @@ def main():
         remaining_requests -= MAX_RESULTS_PER_REQUEST
         if remaining_requests < MAX_RESULTS_PER_REQUEST:
             cur_results = remaining_requests
-
-def get_config_value(section, name):
-    """ Return the specified name if it exists in the section """
-
-    config = configparser.ConfigParser()
-    config.read('config.ini')
-    if name in config[section]:
-        return config.get(section, name)
-    else:
-        return 'False'
-
-if __name__ == '__main__':
-    main()
